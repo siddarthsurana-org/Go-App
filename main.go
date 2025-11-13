@@ -32,26 +32,26 @@ type position struct {
 }
 
 type gameState struct {
-	Board     [][]string `json:"board"`
-	Player    position   `json:"player"`
-	Ghosts    []position `json:"ghosts"`
-	Score     int        `json:"score"`
-	DotsLeft  int        `json:"dotsLeft"`
-	GameOver  bool       `json:"gameOver"`
-	Won       bool       `json:"won"`
+	Board    [][]string `json:"board"`
+	Player   position   `json:"player"`
+	Ghosts   []position `json:"ghosts"`
+	Score    int        `json:"score"`
+	DotsLeft int        `json:"dotsLeft"`
+	GameOver bool       `json:"gameOver"`
+	Won      bool       `json:"won"`
 }
 
 type game struct {
-	board      [][]rune
-	player     position
-	ghosts     []position
-	ghostDirs  []direction
-	score      int
-	dotsLeft   int
-	gameOver   bool
-	playerDir  direction
-	mu         sync.RWMutex
-	lastUpdate time.Time
+	board     [][]rune
+	player    position
+	ghosts    []position
+	ghostDirs []direction
+	score     int
+	dotsLeft  int
+	gameOver  bool
+	playerDir direction
+	mu        sync.RWMutex
+	rng       *rand.Rand
 }
 
 type gameManager struct {
@@ -74,7 +74,7 @@ func (gm *gameManager) getGame(sessionID string) *game {
 func (gm *gameManager) createGame(sessionID string) *game {
 	gm.mu.Lock()
 	defer gm.mu.Unlock()
-	
+
 	g := newGame()
 	gm.games[sessionID] = g
 	return g
@@ -94,6 +94,7 @@ func newGame() *game {
 		ghostDirs: []direction{left, left, right},
 		score:     0,
 		playerDir: none,
+		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 
 	// Initialize board with maze
@@ -181,13 +182,14 @@ func (g *game) moveGhosts() {
 
 	for i := range g.ghosts {
 		ghost := g.ghosts[i]
-		dir := g.ghostDirs[i]
+		var dir direction
 
 		// 30% chance to change direction randomly
-		if rand.Intn(100) < 30 {
-			dir = direction(rand.Intn(4))
+		if g.rng.Intn(100) < 30 {
+			dir = direction(g.rng.Intn(4))
 		} else {
-			// Try to move towards player
+			// Try to move towards player using current direction as base
+			dir = g.ghostDirs[i]
 			dx := g.player.X - ghost.X
 			dy := g.player.Y - ghost.Y
 
@@ -224,7 +226,7 @@ func (g *game) moveGhosts() {
 		} else {
 			// Try random direction if current doesn't work
 			dirs := []direction{up, down, left, right}
-			rand.Shuffle(len(dirs), func(i, j int) {
+			g.rng.Shuffle(len(dirs), func(i, j int) {
 				dirs[i], dirs[j] = dirs[j], dirs[i]
 			})
 			for _, d := range dirs {
@@ -301,28 +303,23 @@ func (gm *gameManager) runGameLoop(sessionID string) {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			g := gm.getGame(sessionID)
-			if g == nil {
-				return
-			}
-
-			if g.gameOver || g.checkWin() {
-				return
-			}
-
-			g.movePlayer()
-			g.moveGhosts()
-			g.checkCollisions()
+	for range ticker.C {
+		g := gm.getGame(sessionID)
+		if g == nil {
+			return
 		}
+
+		if g.gameOver || g.checkWin() {
+			return
+		}
+
+		g.movePlayer()
+		g.moveGhosts()
+		g.checkCollisions()
 	}
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	// Set Gin to release mode for production-like behavior
 	gin.SetMode(gin.ReleaseMode)
 

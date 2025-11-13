@@ -28,22 +28,22 @@ const (
 
 // gameService implements domain.GameService
 type gameService struct {
-	repo          domain.GameRepository
-	logger        *slog.Logger
-	tracer        trace.Tracer
-	gameLoops     map[string]context.CancelFunc
-	gameLoopMu    sync.RWMutex
-	rng           *rand.Rand
+	repo       domain.GameRepository
+	logger     *slog.Logger
+	tracer     trace.Tracer
+	gameLoops  map[string]context.CancelFunc
+	gameLoopMu sync.RWMutex
+	rng        *rand.Rand
 }
 
 // NewGameService creates a new game service
 func NewGameService(repo domain.GameRepository, logger *slog.Logger) domain.GameService {
 	return &gameService{
-		repo:       repo,
-		logger:     logger,
-		tracer:     otel.Tracer("game-service"),
-		gameLoops:  make(map[string]context.CancelFunc),
-		rng:        rand.New(rand.NewSource(time.Now().UnixNano())),
+		repo:      repo,
+		logger:    logger,
+		tracer:    otel.Tracer("game-service"),
+		gameLoops: make(map[string]context.CancelFunc),
+		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
@@ -84,9 +84,9 @@ func (s *gameService) CreateGame(ctx context.Context, sessionID string) (*domain
 // initializeGame creates a new game with initial state
 func (s *gameService) initializeGame(sessionID string) *domain.Game {
 	game := &domain.Game{
-		ID:        sessionID,
-		Board:     make([][]rune, GameHeight),
-		Player:    domain.Position{X: 1, Y: 1},
+		ID:     sessionID,
+		Board:  make([][]rune, GameHeight),
+		Player: domain.Position{X: 1, Y: 1},
 		Ghosts: []domain.Ghost{
 			{Position: domain.Position{X: GameWidth - 2, Y: GameHeight - 2}, Direction: domain.DirectionLeft},
 			{Position: domain.Position{X: GameWidth - 2, Y: 1}, Direction: domain.DirectionLeft},
@@ -207,7 +207,7 @@ func (s *gameService) GetGameState(ctx context.Context, sessionID string) (*doma
 	}
 
 	state := game.ToGameState(GameWidth, GameHeight)
-	
+
 	span.SetAttributes(
 		attribute.Int("score", state.Score),
 		attribute.Int("dots_left", state.DotsLeft),
@@ -384,13 +384,14 @@ func (s *gameService) movePlayer(game *domain.Game) {
 func (s *gameService) moveGhosts(game *domain.Game) {
 	for i := range game.Ghosts {
 		ghost := &game.Ghosts[i]
-		dir := ghost.Direction
+		var dir domain.Direction
 
 		// 30% chance to change direction randomly
 		if s.rng.Intn(100) < 30 {
 			dir = domain.Direction(s.rng.Intn(4))
 		} else {
-			// Try to move towards player
+			// Try to move towards player using current direction as base
+			dir = ghost.Direction
 			dx := game.Player.X - ghost.Position.X
 			dy := game.Player.Y - ghost.Position.Y
 
@@ -478,4 +479,3 @@ func abs(x int) int {
 	}
 	return x
 }
-
