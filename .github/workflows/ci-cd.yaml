@@ -4,13 +4,19 @@ on:
   push:
     branches: [ master ]
     paths:
-      - 'main.go'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'pkg/**'
+      - 'static/**'
+      - 'Dockerfile'
+      - 'go.mod'
+      - 'go.sum'
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: sssurana90/go-todo-app
+  IMAGE_NAME: sssurana90/packman-claude
   ARGOCD_SERVER: argocd-server.argocd
-  ARGOCD_APP_NAME: todo-app
+  ARGOCD_APP_NAME: packman-claude
   ARGOCD_INSECURE: "true"  # Add this for development/testing
 
 jobs:
@@ -23,6 +29,7 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: '1.21'
+          cache: true
           
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
@@ -40,9 +47,20 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: '1.21'
+          cache: true
           
-      - name: Run tests
-        run: go test -v ./...
+      - name: Run tests with coverage
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+      
+      - name: Display coverage
+        run: go tool cover -func=coverage.out
+      
+      - name: Upload coverage to artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 7
 
   build:
     needs: test
@@ -86,25 +104,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Update Helm chart
         run: |
           # Update the image tag in values.yaml
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          sed -i "s|repository: .*|repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}|g" helm/todo-app/values.yaml
-          sed -i "s|tag: .*|tag: sha-$SHORT_SHA|g" helm/todo-app/values.yaml
+          sed -i "s|repository: .*|repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}|g" helm/packman-claude/values.yaml
+          sed -i "s|tag: .*|tag: sha-$SHORT_SHA|g" helm/packman-claude/values.yaml
 
           
           # Package the Helm chart
-          helm package helm/todo-app
+          helm package helm/packman-claude
           helm repo index .
           
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add helm/todo-app/values.yaml
-          git commit -m "Update image to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}"
+          git add helm/packman-claude/values.yaml
+          git commit -m "Update image to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-$(echo ${{ github.sha }} | cut -c1-7)" || exit 0
           git push
 
   deploy-argocd:
