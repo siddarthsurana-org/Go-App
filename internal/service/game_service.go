@@ -384,14 +384,14 @@ func (s *gameService) movePlayer(game *domain.Game) {
 func (s *gameService) moveGhosts(game *domain.Game) {
 	for i := range game.Ghosts {
 		ghost := &game.Ghosts[i]
-		var dir domain.Direction
 
-		// 30% chance to change direction randomly
+		// Determine ghost direction
+		var dir domain.Direction
 		if s.rng.Intn(100) < 30 {
+			// 30% chance to change direction randomly
 			dir = domain.Direction(s.rng.Intn(4))
 		} else {
-			// Try to move towards player using current direction as base
-			dir = ghost.Direction
+			// Try to move towards player
 			dx := game.Player.X - ghost.Position.X
 			dy := game.Player.Y - ghost.Position.Y
 
@@ -401,12 +401,10 @@ func (s *gameService) moveGhosts(game *domain.Game) {
 				} else {
 					dir = domain.DirectionLeft
 				}
+			} else if dy > 0 {
+				dir = domain.DirectionDown
 			} else {
-				if dy > 0 {
-					dir = domain.DirectionDown
-				} else {
-					dir = domain.DirectionUp
-				}
+				dir = domain.DirectionUp
 			}
 		}
 

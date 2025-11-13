@@ -182,14 +182,14 @@ func (g *game) moveGhosts() {
 
 	for i := range g.ghosts {
 		ghost := g.ghosts[i]
-		var dir direction
 
-		// 30% chance to change direction randomly
+		// Determine ghost direction
+		var dir direction
 		if g.rng.Intn(100) < 30 {
+			// 30% chance to change direction randomly
 			dir = direction(g.rng.Intn(4))
 		} else {
-			// Try to move towards player using current direction as base
-			dir = g.ghostDirs[i]
+			// Try to move towards player
 			dx := g.player.X - ghost.X
 			dy := g.player.Y - ghost.Y
 
@@ -199,12 +199,10 @@ func (g *game) moveGhosts() {
 				} else {
 					dir = left
 				}
+			} else if dy > 0 {
+				dir = down
 			} else {
-				if dy > 0 {
-					dir = down
-				} else {
-					dir = up
-				}
+				dir = up
 			}
 		}
 
