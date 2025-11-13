@@ -1,12 +1,12 @@
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
-  name: todo-app-runner
+  name: packman-claude-runner
 spec:
   replicas: 1
   template:
     spec:
-      repository: siddarthsurana/Go-App
+      repository: siddarthsurana-org/Go-App
       labels:
         - self-hosted
         - linux
@@ -15,4 +15,4 @@ spec:
         - name: ARGOCD_SERVER
           value: "argocd-server.argocd.svc.cluster.local"
         - name: ARGOCD_APP_NAME
-          value: "todo-app"
+          value: "packman-claude"

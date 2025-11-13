@@ -86,9 +86,9 @@ func run() error {
 			"port", cfg.Server.Port,
 			"url", fmt.Sprintf("http://localhost:%s", cfg.Server.Port),
 		)
-		fmt.Printf("🎮 Pacman Game Server starting on http://localhost:%s\n", cfg.Server.Port)
+		fmt.Printf("Starting Pacman Game Server on http://localhost:%s\n", cfg.Server.Port)
 		fmt.Printf("Open your browser and navigate to http://localhost:%s\n", cfg.Server.Port)
-		
+
 		serverErrors <- srv.ListenAndServe()
 	}()
 
@@ -124,4 +124,3 @@ func run() error {
 
 	return nil
 }
-
