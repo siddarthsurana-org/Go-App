@@ -11,6 +11,7 @@ on:
       - 'Dockerfile'
       - 'go.mod'
       - 'go.sum'
+      - '.github/workflows/ci-cd.yaml'
 
 env:
   REGISTRY: docker.io
