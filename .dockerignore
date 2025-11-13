@@ -1,0 +1,65 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+ARCHITECTURE.md
+MIGRATION_GUIDE.md
+REFACTORING_SUMMARY.md
+
+# CI/CD and deployment configs
+.github/
+argocd/
+helm/
+k8s/
+catalog-info.yaml
+kind-config.yaml
+mkdocs.yaml
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files and coverage
+*_test.go
+test/
+coverage.out
+*.cover
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+server
+main
+
+# Dependencies (will be downloaded during build)
+vendor/
+
+# Environment files
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
