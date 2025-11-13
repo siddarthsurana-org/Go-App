@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacman Game - Go Backend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #1a1a2e;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        h1 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            color: #fff;
+            font-size: 1.2em;
+        }
+
+        .score, .dots {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        #gameBoard {
+            display: inline-block;
+            background: #000;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .row {
+            display: flex;
+        }
+
+        .cell {
+            width: 20px;
+            height: 20px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wall {
+            background: #1a237e;
+            color: #fff;
+        }
+
+        .dot {
+            color: #ffd700;
+        }
+
+        .empty {
+            color: #000;
+        }
+
+        .player {
+            color: #ffd700;
+            font-weight: bold;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .ghost {
+            color: #ff0000;
+            font-weight: bold;
+        }
+
+        .controls {
+            margin-top: 20px;
+            color: #fff;
+        }
+
+        .controls p {
+            margin: 10px 0;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .game-over.show {
+            display: block;
+        }
+
+        .game-over h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .game-over button {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .game-over button:hover {
+            background: #ffed4e;
+        }
+
+        .status {
+            color: #fff;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎮 PACMAN GAME</h1>
+        <p class="status" id="status">Connecting to Go server...</p>
+        <div class="game-info">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="dots">Dots Left: <span id="dotsLeft">0</span></div>
+        </div>
+        <div id="gameBoard"></div>
+        <div class="controls">
+            <p>Use <strong>WASD</strong> or <strong>Arrow Keys</strong> to move</p>
+            <p>Press <strong>R</strong> to restart</p>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2 id="gameOverMessage"></h2>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let sessionID = null;
+        let pollInterval = null;
+
+        function getHeaders() {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (sessionID) {
+                headers['X-Session-ID'] = sessionID;
+            }
+            return headers;
+        }
+
+        async function startGame() {
+            try {
+                const response = await fetch(`${API_BASE}/api/game/start`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                });
+                const data = await response.json();
+                sessionID = data.sessionID;
+                document.getElementById('status').textContent = 'Connected - Game running on Go server';
+                updateGameState(data.state);
+                startPolling();
+            } catch (error) {
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+                console.error('Error starting game:', error);
+            }
+        }
+
+        async function getGameState() {
+            if (!sessionID) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/game/state`, {
+                    headers: getHeaders(),
+                });
+                if (response.ok) {
+                    const state = await response.json();
+                    updateGameState(state);
+                    
+                    if (state.gameOver || state.won) {
+                        stopPolling();
+                        showGameOver(state);
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting game state:', error);
+            }
+        }
+
+        async function sendMove(direction) {
+            if (!sessionID) return;
+
+            try {
+                await fetch(`${API_BASE}/api/game/move`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ direction }),
+                });
+            } catch (error) {
+                console.error('Error sending move:', error);
+            }
+        }
+
+        async function restartGame() {
+            if (!sessionID) {
+                await startGame();
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/game/restart`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                });
+                const data = await response.json();
+                sessionID = data.sessionID;
+                document.getElementById('gameOver').classList.remove('show');
+                updateGameState(data.state);
+                startPolling();
+            } catch (error) {
+                console.error('Error restarting game:', error);
+            }
+        }
+
+        function startPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+            pollInterval = setInterval(getGameState, 100); // Poll every 100ms
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        function updateGameState(state) {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+
+            for (let i = 0; i < state.board.length; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+
+                for (let j = 0; j < state.board[i].length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+
+                    if (j === state.player.x && i === state.player.y) {
+                        cell.textContent = 'C';
+                        cell.className += ' player';
+                    } else {
+                        let ghostHere = false;
+                        for (const ghost of state.ghosts) {
+                            if (j === ghost.x && i === ghost.y) {
+                                cell.textContent = 'G';
+                                cell.className += ' ghost';
+                                ghostHere = true;
+                                break;
+                            }
+                        }
+
+                        if (!ghostHere) {
+                            const cellContent = state.board[i][j];
+                            if (cellContent === '#') {
+                                cell.textContent = '#';
+                                cell.className += ' wall';
+                            } else if (cellContent === '.') {
+                                cell.textContent = '·';
+                                cell.className += ' dot';
+                            } else {
+                                cell.textContent = ' ';
+                                cell.className += ' empty';
+                            }
+                        }
+                    }
+
+                    row.appendChild(cell);
+                }
+
+                board.appendChild(row);
+            }
+
+            document.getElementById('score').textContent = state.score;
+            document.getElementById('dotsLeft').textContent = state.dotsLeft;
+        }
+
+        function showGameOver(state) {
+            const gameOverDiv = document.getElementById('gameOver');
+            const message = document.getElementById('gameOverMessage');
+            const finalScore = document.getElementById('finalScore');
+
+            if (state.won) {
+                message.textContent = '🎉 YOU WIN!';
+            } else {
+                message.textContent = '💀 GAME OVER!';
+            }
+
+            finalScore.textContent = state.score;
+            gameOverDiv.classList.add('show');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            let direction = null;
+            switch (e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    e.preventDefault();
+                    direction = 'up';
+                    break;
+                case 's':
+                case 'arrowdown':
+                    e.preventDefault();
+                    direction = 'down';
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    e.preventDefault();
+                    direction = 'left';
+                    break;
+                case 'd':
+                case 'arrowright':
+                    e.preventDefault();
+                    direction = 'right';
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    restartGame();
+                    return;
+            }
+
+            if (direction) {
+                sendMove(direction);
+            }
+        });
+
+        // Start the game when page loads
+        startGame();
+    </script>
+</body>
+</html>
