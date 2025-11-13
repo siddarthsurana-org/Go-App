@@ -1,12 +1,12 @@
 # Application configuration
 app:
-  name: todo-api
+  name: packman-claude
   image:
-    repository: docker.io/sssurana90/go-todo-app
-    tag: sha-fc3081b
+    repository: docker.io/sssurana90/packman-claude
+    tag: latest
     pullPolicy: IfNotPresent
   imagePullSecrets:
-    - name: regcred1
+    - name: regcred
 
 # Deployment configuration
 deployment:
@@ -19,12 +19,12 @@ deployment:
       memory: "128Mi"
       cpu: "200m"
   livenessProbe:
-    path: /healthz
+    path: /health
     port: 8080
     initialDelaySeconds: 5
     periodSeconds: 10
   readinessProbe:
-    path: /ready
+    path: /health
     port: 8080
     initialDelaySeconds: 5
     periodSeconds: 10
@@ -39,7 +39,7 @@ service:
 ingress:
   enabled: true
   className: "nginx"
-  host: todo.web.com
+  host: packman-claude.web.com
   path: /
   pathType: Prefix
   annotations:

@@ -1,14 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: todo-app
+  name: packman-claude
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/siddarthsurana/Go-App.git  # Replace with your actual repository URL
     targetRevision: HEAD
-    path: helm/todo-app
+    path: helm/packman-claude
     helm:
       valueFiles:
         - values.yaml

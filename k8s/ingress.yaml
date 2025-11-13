@@ -1,18 +1,18 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: todo-api-ingress
+  name: packman-claude-ingress
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: todo.web.com
+  - host: packman-claude.web.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: todo-api
+            name: packman-claude
             port:
-              number: 80 
+              number: 80
