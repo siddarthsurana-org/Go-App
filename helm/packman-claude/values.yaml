@@ -3,7 +3,7 @@ app:
   name: packman-claude
   image:
     repository: docker.io/sssurana90/packman-claude
-    tag: sha-dd42045
+    tag: sha-f78c0d6
     pullPolicy: IfNotPresent
   imagePullSecrets:
     - name: regcred
