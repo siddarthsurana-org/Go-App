@@ -1,8 +1,8 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: go-todo-app
-  description: A simple Todo API service built with Go and Gin
+  name: packman-claude
+  description: A simple Packman Claude API service built with Go and Gin
   annotations:
     github.com/project-slug: siddarthsurana/Go-App
     backstage.io/techdocs-ref: dir:.
