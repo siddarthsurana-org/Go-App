@@ -153,10 +153,10 @@ jobs:
           argocd app sync ${{ env.ARGOCD_APP_NAME }} \
             --force \
             --prune \
-            --timeout 300
+            --timeout 100
           
       - name: Wait for Sync
         run: |
           argocd app wait ${{ env.ARGOCD_APP_NAME }} \
             --health \
-            --timeout 300 
+            --timeout 600
