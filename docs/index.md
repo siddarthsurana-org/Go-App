@@ -1,226 +1,344 @@
-# Simple Todo API
+# Pac-Man Game Server - Refactored
 
-A simple RESTful API built with Go and Gin framework, similar to Flask in Python. This API provides basic CRUD operations for managing todo items.
+A production-ready Pac-Man game server built with Go, following Clean Architecture principles and modern best practices.
 
-## Prerequisites
+## 🚀 Features
+
+- **Clean Architecture**: Modular, testable, and maintainable codebase
+- **Observability**: Structured logging and distributed tracing with OpenTelemetry
+- **Graceful Shutdown**: Proper cleanup of resources on shutdown
+- **Configuration Management**: Environment-based configuration
+- **Type-Safe**: Strong typing throughout the application
+- **Thread-Safe**: Concurrent game sessions with proper synchronization
+- **RESTful API**: Well-designed HTTP endpoints
+- **Middleware Stack**: CORS, logging, tracing, and recovery middleware
+
+## 📋 Prerequisites
 
 - Go 1.21 or higher
-- Git
-- Docker (optional)
-- Kind (Kubernetes in Docker) (optional)
+- A modern web browser
 
-## Installation
+## 🛠️ Installation
 
-### Local Installation
-
-1. Clone the repository:
 ```bash
-git clone <your-repo-url>
-cd go-app
+# Clone the repository
+git clone <repository-url>
+cd Go-App/MlQDc
+
+# Install dependencies
+go mod download
+
+# Build the application
+go build -o pacman-game cmd/server/main.go
 ```
 
-2. Install dependencies:
+## 🎮 Running the Application
+
+### Development Mode
+
 ```bash
-go mod tidy
+# Run with default configuration
+go run cmd/server/main.go
+
+# Run with debug logging
+LOG_LEVEL=debug go run cmd/server/main.go
+
+# Run on custom port
+PORT=9000 go run cmd/server/main.go
 ```
 
-3. Run the server:
+### Production Mode
+
 ```bash
-go run main.go
+# Build the binary
+go build -o pacman-game cmd/server/main.go
+
+# Run the binary
+./pacman-game
+
+# Run with custom configuration
+PORT=8080 GIN_MODE=release LOG_FORMAT=json ./pacman-game
 ```
 
-The server will start on `http://localhost:8080`
+## 🌐 Access the Game
 
-### Docker Installation
-
-1. Build the Docker image:
-```bash
-docker build -t go-todo-api .
+Once the server is running, open your browser and navigate to:
+```
+http://localhost:8080
 ```
 
-2. Run the container:
-```bash
-docker run -p 8080:8080 go-todo-api
-```
-
-The server will start on `http://localhost:8080`
-
-### Kubernetes (Kind) Installation with Ingress
-
-1. Install Kind if you haven't already:
-```bash
-brew install kind  # For macOS
-```
-
-2. Create a Kind cluster with Ingress support:
-```bash
-kind create cluster --name todo-cluster --config kind-config.yaml
-```
-
-3. Deploy the NGINX Ingress Controller:
-```bash
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-```
-
-4. Wait for the Ingress controller to be ready:
-```bash
-kubectl wait --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=90s
-```
-
-5. Build and load the Docker image into Kind:
-```bash
-docker build -t go-todo-api .
-kind load docker-image go-todo-api:latest --name todo-cluster
-```
-
-6. Deploy the application and Ingress:
-```bash
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/ingress.yaml
-```
-
-7. Add the host to your hosts file:
-```bash
-echo "127.0.0.1 todo.local" | sudo tee -a /etc/hosts
-```
-
-The API will be available at:
-- `http://todo.local:30080/health`
-- `http://todo.local:30080/todos`
-- `http://todo.local:30080/todos/1`
-
-### Backstage Integration
-
-This project is integrated with Backstage, a developer portal that provides a unified interface for managing software components. The integration includes:
-
-1. **Component Registration**
-   - The project is registered in Backstage as a software component
-   - Metadata includes repository information, ownership, and tech stack details
-
-2. **CI/CD Integration**
-   - GitHub Actions workflows are visible in Backstage
-   - Build and deployment status can be monitored
-   - ArgoCD deployment information is available
-
-3. **Documentation**
-   - API documentation is accessible through Backstage
-   - Technical specifications and architecture details are maintained
-   - Links to relevant resources and documentation
-
-4. **Dependencies**
-   - External dependencies are tracked
-   - Security vulnerabilities are monitored
-   - License compliance is maintained
-
-To view this component in Backstage:
-1. Navigate to your Backstage instance
-2. Search for "todo-api" or "go-todo-app"
-3. Access component details, CI/CD status, and documentation
-
-## API Endpoints
+## 📚 API Documentation
 
 ### Health Check
-Check if the API is running.
-
 ```bash
 curl http://localhost:8080/health
 ```
 
+### Start New Game
+```bash
+curl -X POST http://localhost:8080/api/game/start
+```
+
 Response:
 ```json
 {
-  "status": "ok"
-}
-```
-
-### Get All Todos
-Retrieve all todo items.
-
-```bash
-curl http://localhost:8080/todos
-```
-
-Response:
-```json
-[
-  {
-    "id": "1",
-    "title": "Learn Go",
-    "completed": false
-  },
-  {
-    "id": "2",
-    "title": "Build API",
-    "completed": false
+  "sessionId": "session-1234567890",
+  "state": {
+    "board": [...],
+    "player": {"x": 1, "y": 1},
+    "ghosts": [...],
+    "score": 0,
+    "dotsLeft": 100,
+    "gameOver": false,
+    "won": false
   }
-]
-```
-
-### Get a Specific Todo
-Retrieve a single todo item by its ID.
-
-```bash
-curl http://localhost:8080/todos/1
-```
-
-Response:
-```json
-{
-  "id": "1",
-  "title": "Learn Go",
-  "completed": false
 }
 ```
 
-### Create a New Todo
-Create a new todo item.
-
+### Get Game State
 ```bash
-curl -X POST http://localhost:8080/todos \
+curl -H "X-Session-ID: session-1234567890" \
+  http://localhost:8080/api/game/state
+```
+
+### Move Player
+```bash
+curl -X POST \
+  -H "X-Session-ID: session-1234567890" \
   -H "Content-Type: application/json" \
-  -d '{
-    "id": "3",
-    "title": "Test API",
-    "completed": false
-  }'
+  -d '{"direction": "up"}' \
+  http://localhost:8080/api/game/move
 ```
 
-Response:
-```json
-{
-  "id": "3",
-  "title": "Test API",
-  "completed": false
-}
+Valid directions: `up`, `down`, `left`, `right`
+
+### Restart Game
+```bash
+curl -X POST \
+  -H "X-Session-ID: session-1234567890" \
+  http://localhost:8080/api/game/restart
 ```
 
-## Error Handling
+## ⚙️ Configuration
 
-The API returns appropriate HTTP status codes and error messages:
+Configure the application using environment variables:
 
-- `200 OK`: Successful request
-- `201 Created`: Resource successfully created
-- `400 Bad Request`: Invalid request body
-- `404 Not Found`: Resource not found
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `8080` |
+| `GIN_MODE` | Gin mode (`debug` or `release`) | `release` |
+| `LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) | `info` |
+| `LOG_FORMAT` | Log format (`json` or `text`) | `json` |
+| `SERVICE_NAME` | Service name for tracing | `pacman-game` |
+| `SERVICE_VERSION` | Service version | `1.0.0` |
+| `ENVIRONMENT` | Environment name | `development` |
+| `TRACING_ENABLED` | Enable OpenTelemetry tracing | `true` |
+| `READ_TIMEOUT` | HTTP read timeout | `30s` |
+| `WRITE_TIMEOUT` | HTTP write timeout | `30s` |
+| `SHUTDOWN_TIMEOUT` | Graceful shutdown timeout | `10s` |
 
-Example error response:
-```json
-{
-  "error": "Todo not found"
-}
+Example:
+```bash
+PORT=9000 \
+LOG_LEVEL=debug \
+LOG_FORMAT=text \
+TRACING_ENABLED=false \
+go run cmd/server/main.go
 ```
 
-## Project Structure
+## 🏗️ Architecture
+
+The application follows Clean Architecture with clear separation of concerns:
 
 ```
-.
-├── main.go      # Main application code
-├── go.mod       # Go module file
-└── README.md    # This file
+cmd/server/          # Application entry point
+internal/
+  config/           # Configuration management
+  domain/           # Business entities and interfaces
+  service/          # Business logic
+  repository/       # Data access layer
+  handler/http/     # HTTP handlers
+  middleware/       # HTTP middleware
+pkg/
+  observability/    # Logging and tracing utilities
 ```
-## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with coverage
+go test -cover ./...
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run specific package tests
+go test ./internal/service/...
+```
+
+## 📊 Observability
+
+### Structured Logging
+
+The application uses Go's `log/slog` for structured logging:
+
+```bash
+# JSON format (default)
+{"time":"2024-11-13T10:30:00Z","level":"INFO","msg":"server listening","port":"8080"}
+
+# Text format
+LOG_FORMAT=text go run cmd/server/main.go
+```
+
+### Distributed Tracing
+
+OpenTelemetry tracing is enabled by default. Traces are exported to stdout for development.
+
+To disable tracing:
+```bash
+TRACING_ENABLED=false go run cmd/server/main.go
+```
+
+For production, configure an OTLP endpoint:
+```bash
+TRACING_ENDPOINT=http://jaeger:4318 go run cmd/server/main.go
+```
+
+## 🔒 Security
+
+- **Input Validation**: All inputs are validated
+- **Error Handling**: Errors don't leak sensitive information
+- **CORS**: Configurable CORS policies
+- **Graceful Degradation**: Handles errors without crashing
+- **Resource Cleanup**: Proper cleanup prevents resource leaks
+
+## 🐳 Docker Support
+
+```bash
+# Build Docker image
+docker build -t pacman-game .
+
+# Run container
+docker run -p 8080:8080 pacman-game
+
+# Run with custom configuration
+docker run -p 9000:9000 -e PORT=9000 -e LOG_LEVEL=debug pacman-game
+```
+
+## 📝 Development
+
+### Code Organization
+
+- **Domain Layer**: Pure business logic, no external dependencies
+- **Service Layer**: Use cases and business logic implementation
+- **Repository Layer**: Data access and storage
+- **Handler Layer**: HTTP request/response handling
+- **Middleware**: Cross-cutting concerns (logging, tracing, CORS)
+
+### Adding New Features
+
+1. Define domain entities and interfaces in `internal/domain/`
+2. Implement business logic in `internal/service/`
+3. Add data access in `internal/repository/`
+4. Create HTTP handlers in `internal/handler/http/`
+5. Wire dependencies in `cmd/server/main.go`
+
+### Code Quality
+
+```bash
+# Format code
+go fmt ./...
+
+# Run linters
+golangci-lint run
+
+# Generate coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+## 🚀 Deployment
+
+### Binary Deployment
+
+```bash
+# Build for production
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+  -ldflags="-w -s" \
+  -o pacman-game \
+  cmd/server/main.go
+
+# Run
+PORT=8080 GIN_MODE=release ./pacman-game
+```
+
+### Kubernetes Deployment
+
+Helm charts and Kubernetes manifests are available in:
+- `helm/todo-app/` - Helm chart
+- `k8s/` - Kubernetes manifests
+- `argocd/` - ArgoCD configurations
+
+```bash
+# Deploy with Helm
+helm install pacman-game ./helm/todo-app
+
+# Deploy with kubectl
+kubectl apply -f k8s/
+```
+
+## 🤝 Contributing
+
+1. Follow Go best practices and conventions
+2. Write tests for new features
+3. Update documentation
+4. Run linters and formatters
+5. Ensure all tests pass
+
+## 📄 License
+
+[Your License Here]
+
+## 📧 Contact
+
+[Your Contact Information]
+
+## 🙏 Acknowledgments
+
+- Clean Architecture by Robert C. Martin
+- OpenTelemetry community
+- Go community
+
+## 🔄 Migration from Legacy
+
+The old `main.go` contained all code in a single file. The refactored version:
+
+✅ **Improvements:**
+- Separated concerns into layers
+- Added observability (logging, tracing)
+- Implemented graceful shutdown
+- Added context propagation
+- Fixed goroutine leaks
+- Added proper error handling
+- Made code testable
+- Added configuration management
+- Used modern Go patterns (slog, context)
+
+To migrate:
+1. Use the new entry point: `go run cmd/server/main.go`
+2. The API endpoints remain the same
+3. Configure via environment variables
+4. The old `main.go` can be removed
+
+## 📖 Additional Resources
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed architecture documentation
+- [Go Documentation](https://golang.org/doc/)
+- [OpenTelemetry Go](https://opentelemetry.io/docs/instrumentation/go/)
+- [Gin Framework](https://gin-gonic.com/)
+
